@@ -8,11 +8,11 @@ This is an **experimental** library for making applications out of Jupyter serve
 
 The following describes the pattern for writing a jupyter server extension that also works as a standalone application.
 
-1. Subclass the `JupyterExtensionApplication`. 
+1. Subclass the `JupyterServerExtensionApp`. 
 ```python
-from jupyter_server_extension.application import JupyterExtensionApplication
+from jupyter_server_extension.application import JupyterServerExtensionApp
 
-class MyExtensionApp(JupyterExtensionApplication):
+class MyExtensionApp(JupyterServerExtensionApp):
     name = "my_extension"
 
     load_jupyter_server_extension = staticmethod(load_jupyter_server_extension)
