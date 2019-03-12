@@ -4,7 +4,14 @@ from jupyter_server.base.handlers import JupyterHandler
 from traitlets import Unicode, default
 
 class JupyterExtensionHandler(JupyterHandler):
-    """Handlers for Extensions to the Jupyter Server.
+    """Base class for Jupyter server extension handlers. 
+
+    Subclasses can serve static files behind a namespaced 
+    endpoint: "/static/<extension_name>/" 
+
+    This allows multiple extensions to serve static files under
+    their own namespace and avoid intercepting requests for 
+    other extensions. 
     """
     extension_name = Unicode(help="Name of the extenxsion")
 

@@ -6,6 +6,8 @@ This is an **experimental** library for making applications out of Jupyter serve
 
 ## How to write an extension
 
+The following describes the pattern for writing a jupyter server extension that also works as a standalone application.
+
 1. Subclass the `JupyterExtensionApplication`. 
 ```python
 from jupyter_server_extension.application import JupyterExtensionApplication
@@ -31,7 +33,8 @@ class MyExtensionHandler(JupyterExtensionHandler):
         self.render_template("index.html")
 
 ```
-3. Write a `load_jupyter_server_extension` function.
+3. Write a `load_jupyter_server_extension` function. The first thing you should do in this function is load your extensions application.
+
 ```python
 def load_jupyter_server_extension(serverapp):
     # Load the configuration file.
