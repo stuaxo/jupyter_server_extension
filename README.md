@@ -8,48 +8,42 @@ This is an **experimental** library for making applications out of Jupyter serve
 
 The following describes the pattern for writing a jupyter server extension that also works as a standalone application.
 
-1. Subclass the `JupyterServerExtensionApp`. 
-```python
-from jupyter_server_extension.application import JupyterServerExtensionApp
+1. Subclass the `ExtensionHandler` to handler API requests. This handler points the `static_url` to namespaced endpoints under the `static` url pattern.  
 
-class MyExtensionApp(JupyterServerExtensionApp):
-    name = "my_extension"
-
-    load_jupyter_server_extension = staticmethod(load_jupyter_server_extension)
-    static_file_path = Unicode("/path/to/static/dir/")
-
-
-    # Traits that will be loaded by Jupyter's config system.
-    trait1 = Unicode("trait1").tag(config=True)
-    trait2 = Unicode("trait2").tag(config=True)
-```
-2. Subclass the `JupyterExtensionHandler` to handler API requests. This handler points the `static_url` to namespaced endpoints under the `static` url pattern.  
 ```python
 from jupyter_server_extension.handler import JupyterExtensionHandler
 
-class MyExtensionHandler(JupyterExtensionHandler):
+class MyExtensionHandler(ExtensionHandler):
 
     def get(self):
         self.render_template("index.html")
 
 ```
-3. Write a `load_jupyter_server_extension` function. The first thing you should do in this function is load your extensions application.
+
+2. Subclass the `ExtensionApp` and add handlers.
 
 ```python
-def load_jupyter_server_extension(serverapp):
-    # Load the configuration file.
-    extension = MyExtension()
-    extension.load_config_file()
+from traitlets import Unicode
+from jupyter_server_extension.application import ExtensionApp
 
-    webapp = serverapp.web_app
+class MyExtensionApp(ExtensionApp):
 
-    # Add a handler for serving static files.
-    handlers = []
-    handlers.append("/my_extension", MyExtensionHandler)
-    handlers.append(
-        (r"/static/my_extension/(.*)", StaticFileHandler, {"path": extension.static_file_path})
-    )
+    name = Unicode("my_extension")
+    static_file_path = Unicode("/path/to/static/dir/")
 
-    # Add handlers to jupyter web application.
-    webapp.add_handlers(".*$", handlers)
+        
+    def initialize_handlers(self):
+        self.handlers = []
+        self.handlers.append(
+            (r'/myextension', MyExtensionHandler)
+        )
+
+# `launch_instance` method offers an entry point to start the server and application. 
+main = MyExtensionApp.launch_instance
+
+# `load_jupyter_server_extension` method allows extension to be appended to already running server. 
+load_jupyter_server_extension = MyExtensionApp.load_jupyter_server_extension
 ```
+
+## What is this library? 
+

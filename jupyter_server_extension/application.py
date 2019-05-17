@@ -4,8 +4,10 @@ from traitlets.config.application import catch_config_error
 from jupyter_server.serverapp import ServerApp
 from jupyter_core.application import JupyterApp
 
+from traitlets import Unicode, List
 
-class JupyterServerExtensionApp(JupyterApp):
+
+class ExtensionApp(JupyterApp):
     """A base class for writing Jupyter server extensions that also
     behave like stand alone Jupyter applications. 
 
@@ -17,70 +19,86 @@ class JupyterServerExtensionApp(JupyterApp):
     `JupyterServerExtensionApp` and a `load_jupyter_server_extension`
     function. See the example below:
 
-    .. code-block:: python
-
-        class MyExtensionApp(JupyterExtensionApplication):
-            name = "my_extension"
-
-            load_jupyter_server_extension = staticmethod(load_jupyter_server_extension)
-            static_file_path = Unicode("/path/to/static/dir/")
-
-            # Traits that will be loaded by Jupyter's config system.
-            trait1 = Unicode("trait1").tag(config=True)
-            trait2 = Unicode("trait2").tag(config=True)
-
-
-        def load_jupyter_server_extension(serverapp):
-
-            # Load the configuration file.
-            extension = MyExtension()
-            extension.load_config_file()
-
-            webapp = serverapp.web_app
-
-            # Add a handler for serving static files.
-            handlers = []
-            handlers.append("/my_extension", MyExtensionHandler)
-            handlers.append(
-                (r"/static/my_extension/(.*)", StaticFileHandler, {"path": extension.static_file_path})
-            )
-
-            # Add handlers to jupyter web application.
-            webapp.add_handlers(".*$", handlers)
     """
-    @staticmethod
-    def load_jupyter_server_extension(serverapp):
-        raise Exception("Must be implemented in a subclass.")
+    # Name of the extension
+    name = Unicode(
+        "",
+        help="Name of extension."
+    )
 
-    def initialize_config(self):
-        """Load configurations outside of the command line interface."""
-        self.load_config_file()
+    @default("name"):
+    def _default_name(self):
+        raise Exception("The extension must be given a `name`.")
 
-    def initialize_server(self):
-        """Create an instance of the jupyter_server ServerApp and initialize."""
-        self.serverapp = ServerApp()
-        self.serverapp.initialize()
-    
-    @catch_config_error
-    def initialize(self, argv=None):
-        """Initialize the server extension using the `load_jupyter_server_extension` function.
+    # Extension can configure the ServerApp from the command-line
+    classes = [
+        ServerApp
+    ]
+
+    static_paths = List(Unicode(),
+        config=True,
+        help="""paths to search for serving static files.
+        
+        This allows adding javascript/css to be available from the notebook server machine,
+        or overriding individual files in the IPython
         """
-        # don't hook up crash handler before parsing command-line
-        if argv is None:
-            argv = sys.argv[1:]
-        if argv:
-            subc = self._find_subcommand(argv[0])
-            if subc:
-                self.argv = argv
-                self.subcommand = subc
-                return
-        self.load_jupyter_server_extension(self.serverapp)
-        self.parse_command_line(argv)
+    )
 
-    def start(self):
-        """Starts the ServerApp first, then launches the extension."""
+    template_paths = List(Unicode(), 
+        config=True,
+        help=_("""Paths to search for serving jinja templates.
+
+        Can be used to override templates from notebook.templates.""")
+    )
+
+    classmethod
+    def load_jupyter_server_extension(cls, serverapp, argv=None, **kwargs):
+        # QUESTION: Can we update traits of ServerApp after its initialized and started?
+        # Get webapp
+        webapp = serverapp.web_app
+        
+        # Create an instance of this extension
+        extension = cls.instance(**kwargs)
+        extension.initialize(argv=argv)
+        extension.initialize_handlers()
+        extension.initialize_static_handler()
+        extension.initialize_templates()
+        extension.initialize_settings()
+
+        # Make extension settings accessible to handlers inside webapp settings.
+        webapp.settings.update(**extension.settings)
+
+        # Add handlers to serverapp.
+        webapp.add_handlers('.*$', extension.handlers)
+
+
+    def initialize_handlers(self):
+        self.handlers = []
+
+    def initialize_static_handler(self):
+        # Check to see if 
+        if len(self.static_paths) > 0:
+            handler = (
+                r"/static/{}/(.*)".format(self.name),
+                StaticFileHandler,
+                {"path": self.static_paths}
+            )
+            self.handlers.append(handler)
+
+    def initialize_templates(self):
+        pass
+
+    def initialize_settings(self):
+        pass
+
+    # Everything below this line is for launching
+    # this extension from the command line.
+    # ------------------------------------------------
+
+    def initialize_servers(self):
+        """Add handlers to server."""
+        self.serverapp = ServerApp()
         self.serverapp.start()
-        super(JupyterServerExtensionApp, self).start()
 
     @classmethod
     def launch_instance(cls, argv=None, **kwargs):
@@ -88,8 +106,11 @@ class JupyterServerExtensionApp(JupyterApp):
         
         Properly orders the steps to initialize and start the server and extension.
         """
-        app = cls.instance(**kwargs)
-        app.initialize_server()
-        app.initialize_config()
-        app.initialize(argv=argv)
-        app.start()
+        # Initialize the server
+        self.initialize_server()
+
+        # Load the extension
+        extension = cls.load_jupyter_server_extension(self.serverapp, argv=argv, **kwargs)
+        
+        # Start the application.
+        extension.start()
