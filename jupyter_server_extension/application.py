@@ -51,29 +51,13 @@ class ExtensionApp(JupyterApp):
         Can be used to override templates from notebook.templates.""")
     )
 
-    classmethod
-    def load_jupyter_server_extension(cls, serverapp, argv=None, **kwargs):
-        # QUESTION: Can we update traits of ServerApp after its initialized and started?
-        # Get webapp
-        webapp = serverapp.web_app
-        
-        # Create an instance of this extension
-        extension = cls.instance(**kwargs)
-        extension.initialize(argv=argv)
-        extension.initialize_handlers()
-        extension.initialize_static_handler()
-        extension.initialize_templates()
-        extension.initialize_settings()
 
-        # Make extension settings accessible to handlers inside webapp settings.
-        webapp.settings.update(**extension.settings)
-
-        # Add handlers to serverapp.
-        webapp.add_handlers('.*$', extension.handlers)
-
-
-    def initialize_handlers(self):
+    def __init__(self, *args, **kwargs):
         self.handlers = []
+        self.settings = {
+            "{}_static_path".format(self.name): self.static_paths,
+            "{}_template_path".format(self.name): self.template_paths
+        }
 
     def initialize_static_handler(self):
         # Check to see if 
@@ -84,6 +68,9 @@ class ExtensionApp(JupyterApp):
                 {"path": self.static_paths}
             )
             self.handlers.append(handler)
+
+    def initialize_handlers(self):
+        pass
 
     def initialize_templates(self):
         pass
@@ -114,3 +101,24 @@ class ExtensionApp(JupyterApp):
         
         # Start the application.
         extension.start()
+
+    
+    classmethod
+    def load_jupyter_server_extension(cls, serverapp, argv=None, **kwargs):
+        # QUESTION: Can we update traits of ServerApp after its initialized and started?
+        # Get webapp
+        webapp = serverapp.web_app
+        
+        # Create an instance of this extension
+        extension = cls.instance(**kwargs)
+        extension.initialize(argv=argv)
+        extension.initialize_handlers()
+        extension.initialize_static_handler()
+        extension.initialize_templates()
+        extension.initialize_settings()
+
+        # Make extension settings accessible to handlers inside webapp settings.
+        webapp.settings.update(**extension.settings)
+
+        # Add handlers to serverapp.
+        webapp.add_handlers('.*$', extension.handlers)

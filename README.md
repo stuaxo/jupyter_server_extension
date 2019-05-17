@@ -29,7 +29,11 @@ from jupyter_server_extension.application import ExtensionApp
 class MyExtensionApp(ExtensionApp):
 
     name = Unicode("my_extension")
-    static_file_path = Unicode("/path/to/static/dir/")
+
+    static_paths = List(
+        Unicode("/path/to/static/dir/"),
+        help="""List of places to file static served files."""
+    )
 
         
     def initialize_handlers(self):
@@ -44,6 +48,4 @@ main = MyExtensionApp.launch_instance
 # `load_jupyter_server_extension` method allows extension to be appended to already running server. 
 load_jupyter_server_extension = MyExtensionApp.load_jupyter_server_extension
 ```
-
-## What is this library? 
 
