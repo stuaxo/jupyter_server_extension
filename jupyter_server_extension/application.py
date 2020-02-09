@@ -103,7 +103,7 @@ class ExtensionApp(JupyterApp):
         extension.start()
 
     
-    classmethod
+    @classmethod
     def load_jupyter_server_extension(cls, serverapp, argv=None, **kwargs):
         # QUESTION: Can we update traits of ServerApp after its initialized and started?
         # Get webapp
